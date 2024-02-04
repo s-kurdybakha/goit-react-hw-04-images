@@ -1,4 +1,4 @@
-import { PureComponent } from 'react';
+import { useState, useEffect } from 'react';
 import ImageGallery from './ImageGallery/ImageGallery';
 import { searchImages } from '../API/images';
 import { IMAGES_PER_PAGE } from '../API/images';
@@ -10,110 +10,191 @@ import Searchbar from './Searchbar/Searchbar';
 import Button from './Button/Button';
 import Modal from './Modal/Modal';
 
-export class App extends PureComponent {
-  state = {
-    search: '',
-    images: [],
-    loading: false,
-    isLoadMore: false,
-    error: null,
-    page: 1,
-    modalOpen: false,
-    largeImage: {},
-  };
+const App = () => {
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [largeImage, setLargeImage] = useState({});
+  const [isLoadMore, setIsLoadMore] = useState(false);
 
-  async componentDidUpdate(prevProps, prevState) {
-    const { search, page } = this.state;
-    if (search && (search !== prevState.search || page !== prevState.page)) {
-      this.fetchPosts();
-    }
-  }
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setLoading(true);
 
-  async fetchPosts() {
-    const { search, page } = this.state;
-    try {
-      this.setState({
-        loading: true,
-      });
-      const { data } = await searchImages(search, page);
+        const { data } = await searchImages(search, page);
 
-      this.setState(({ images }) => ({
-        images: data.hits?.length ? [...images, ...data.hits] : images,
-      }));
+        setImages(data.hits?.length ? [...images, ...data.hits] : images);
 
-      if (data.totalHits > IMAGES_PER_PAGE) {
-        this.displayLoadMoreButton(true);
+        if (data.totalHits > IMAGES_PER_PAGE) {
+          displayLoadMoreButton(true);
+        }
+
+        if (IMAGES_PER_PAGE * page >= data.totalHits) {
+          displayLoadMoreButton(false);
+        }
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
       }
-
-      if (IMAGES_PER_PAGE * page >= data.totalHits) {
-        this.displayLoadMoreButton(false);
-      }
-    } catch (error) {
-      this.setState({
-        error: error.message,
-      });
-    } finally {
-      this.setState({
-        loading: false,
-      });
+    };
+    if (search) {
+      fetchPosts();
     }
-  }
+  }, [search, page]);
 
-  handleSearch = ({ search }) => {
-    this.setState({
-      search,
-      images: [],
-      page: 1,
-    });
+  const handleSearch = ({ search }) => {
+    setSearch(search);
+    setImages([]);
+    setPage(1);
   };
 
-  loadMore = () => {
-    this.setState(({ page }) => ({ page: page + 1 }));
+  const loadMore = () => setPage(prevPage => prevPage + 1);
+
+  const displayLoadMoreButton = isShow => setIsLoadMore(isShow);
+
+  const showModal = largeImageURL => {
+    setModalOpen(true);
+    setLargeImage({ largeImageURL });
   };
 
-  displayLoadMoreButton = isShow => {
-    this.setState({ isLoadMore: isShow });
+  const closeModal = () => {
+    setModalOpen(false);
+    setLargeImage({});
   };
 
-  showModal = largeImageURL => {
-    this.setState({
-      modalOpen: true,
-      largeImage: { largeImageURL },
-    });
-  };
+  return (
+    <div>
+      <Searchbar onSubmit={handleSearch} />
+      {error && <p>{error}</p>}
+      {loading && <Loader />}
 
-  closeModal = () => {
-    this.setState({
-      modalOpen: false,
-      largeImage: {},
-    });
-  };
+      <ImageGallery showModal={showModal} items={images} />
+      {isLoadMore && (
+        <div className={css.loadMoreWrapper}>
+          <Button onClick={loadMore} type="button">
+            Load More
+          </Button>
+        </div>
+      )}
+      {modalOpen && (
+        <Modal close={closeModal}>
+          <img src={largeImage.largeImageURL} alt="" />
+        </Modal>
+      )}
+    </div>
+  );
+};
 
-  render() {
-    const { handleSearch, loadMore, showModal, closeModal } = this;
-    const { images, loading, isLoadMore, error, modalOpen, largeImage } =
-      this.state;
-    // const imagesLength = Boolean(images.length);
-    return (
-      <div>
-        <Searchbar onSubmit={handleSearch} />
-        {error && <p>{error}</p>}
-        {loading && <Loader />}
+// export class App extends PureComponent {
+//   state = {
+//     search: '',
+//     images: [],
+//     loading: false,
+//     isLoadMore: false,
+//     error: null,
+//     page: 1,
+//     modalOpen: false,
+//     largeImage: {},
+//   };
 
-        <ImageGallery showModal={showModal} items={images} />
-        {isLoadMore && (
-          <div className={css.loadMoreWrapper}>
-            <Button onClick={loadMore} type="button">
-              Load More
-            </Button>
-          </div>
-        )}
-        {modalOpen && (
-          <Modal close={closeModal}>
-            <img src={largeImage.largeImageURL} alt="" />
-          </Modal>
-        )}
-      </div>
-    );
-  }
-}
+//   async componentDidUpdate(prevProps, prevState) {
+//     const { search, page } = this.state;
+//     if (search && (search !== prevState.search || page !== prevState.page)) {
+//       this.fetchPosts();
+//     }
+//   }
+
+//   async fetchPosts() {
+//     const { search, page } = this.state;
+//     try {
+//       this.setState({
+//         loading: true,
+//       });
+//       const { data } = await searchImages(search, page);
+
+//       this.setState(({ images }) => ({
+//         images: data.hits?.length ? [...images, ...data.hits] : images,
+//       }));
+
+//       if (data.totalHits > IMAGES_PER_PAGE) {
+//         this.displayLoadMoreButton(true);
+//       }
+
+//       if (IMAGES_PER_PAGE * page >= data.totalHits) {
+//         this.displayLoadMoreButton(false);
+//       }
+//     } catch (error) {
+//       this.setState({
+//         error: error.message,
+//       });
+//     } finally {
+//       this.setState({
+//         loading: false,
+//       });
+//     }
+//   }
+
+//   handleSearch = ({ search }) => {
+//     this.setState({
+//       search,
+//       images: [],
+//       page: 1,
+//     });
+//   };
+
+//   loadMore = () => {
+//     this.setState(({ page }) => ({ page: page + 1 }));
+//   };
+
+//   displayLoadMoreButton = isShow => {
+//     this.setState({ isLoadMore: isShow });
+//   };
+
+//   showModal = largeImageURL => {
+//     this.setState({
+//       modalOpen: true,
+//       largeImage: { largeImageURL },
+//     });
+//   };
+
+//   closeModal = () => {
+//     this.setState({
+//       modalOpen: false,
+//       largeImage: {},
+//     });
+//   };
+
+//   render() {
+//     const { handleSearch, loadMore, showModal, closeModal } = this;
+//     const { images, loading, isLoadMore, error, modalOpen, largeImage } =
+//       this.state;
+//     // const imagesLength = Boolean(images.length);
+//     return (
+//       <div>
+//         <Searchbar onSubmit={handleSearch} />
+//         {error && <p>{error}</p>}
+//         {loading && <Loader />}
+
+//         <ImageGallery showModal={showModal} items={images} />
+//         {isLoadMore && (
+//           <div className={css.loadMoreWrapper}>
+//             <Button onClick={loadMore} type="button">
+//               Load More
+//             </Button>
+//           </div>
+//         )}
+//         {modalOpen && (
+//           <Modal close={closeModal}>
+//             <img src={largeImage.largeImageURL} alt="" />
+//           </Modal>
+//         )}
+//       </div>
+//     );
+//   }
+// }
+export default App;
