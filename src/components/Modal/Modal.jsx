@@ -8,7 +8,6 @@ console.log(modalRoot);
 
 const Modal = ({ close, children }) => {
   const closeModal = ({ target, currentTarget, code }) => {
-    console.log(code);
     if (target === currentTarget || code === 'Escape') close();
   };
 
@@ -25,7 +24,7 @@ const Modal = ({ close, children }) => {
           <span className={css.buttonLabelClose}>
             <IoClose />
           </span>
-        </button>{' '}
+        </button>
         {children}
       </div>
     </div>,
